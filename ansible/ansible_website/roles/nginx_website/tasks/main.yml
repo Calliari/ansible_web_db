@@ -1,0 +1,24 @@
+--- # roles/nginx_website/tasks/main.yml
+# nginx_website
+  - name: remove default file "/etc/nginx/sites-enable/default"
+    file:
+      path: "/etc/nginx/sites-enabled/default"
+      state: absent
+    notify:
+      - restart nginx
+
+  - name: "nginx configuration with the {{ website }}"
+    template:
+      src: templates/nginx_ssl_config_vhost.j2
+      dest: "/etc/nginx/sites-available/{{ website }}"
+      force: yes
+    notify:
+      - restart nginx
+
+  - name: symlinks file for nginx
+    file:
+      src: "/etc/nginx/sites-available/{{ website }}"
+      dest: "/etc/nginx/sites-enabled/{{ website }}"
+      state: link
+    notify:
+      - restart nginx

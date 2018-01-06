@@ -1,0 +1,6 @@
+--- # roles/percona/handlers/main.yml
+#  service mysql restart afther install percona
+  - name: restart mysql
+    service: name=mysql state=restarted
+    become: yes
+    become_method: sudo

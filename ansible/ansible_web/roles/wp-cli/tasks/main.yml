@@ -1,0 +1,9 @@
+--- # roles/wp-cli/tasks/main.yml
+# wp-cli
+- name: Download wp-cli
+  get_url:
+    url: https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    dest: /usr/local/bin/wp
+    mode: 775
+  become_method: sudo
+  become: yes

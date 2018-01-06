@@ -1,0 +1,28 @@
+--- # roles/pre_installations/tasks/main.yml
+# pre_installations
+  - name: Install these dependencies before all
+    apt_repository: repo='{{ item }}' state=present update_cache=yes
+    with_items:
+      - ppa:ondrej/php
+
+  - name: Install dependencies for future Installation on webServer (Ubuntu 16)
+    apt: name={{ item }} state=installed update_cache=yes
+    with_items:
+      - python-pip
+      - aptitude
+      - python-apt
+      - zip
+      - unzip
+      - python-software-properties
+      - software-properties-common
+      - python-mysqldb
+
+  - name: Install dependencies for moosh
+    apt_repository:
+      repo: deb http://ppa.launchpad.net/zabuch/ppa/ubuntu trusty main
+      state: present
+      update_cache: yes
+
+  - pip:
+      name:
+        - pexpect

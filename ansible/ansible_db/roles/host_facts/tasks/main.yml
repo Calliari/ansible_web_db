@@ -1,0 +1,11 @@
+--- # Very good to know every detail about remote host deployed with this ansible playbook
+  - name: Display all facts known of host
+    debug:
+      var: hostvars[inventory_hostname]
+    when: show_facts
+
+
+  - name: output a particular fact from host
+    debug:
+      var: ansible_dns.nameservers
+    when: show_facts

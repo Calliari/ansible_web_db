@@ -1,0 +1,6 @@
+--- # roles/curl/tasks/main.yml
+# curl
+  - name: Install curl
+    apt: name={{ item }} state=latest update_cache=yes
+    with_items:
+      - curl

@@ -1,0 +1,24 @@
+--- # This is the main playbook in this project
+    # The variables are in the vars directory
+    # read the README.md file for more information about this playbook
+
+# DB
+# deploy this on dbServer
+  - hosts: dbServer
+    remote_user: ubuntu
+    become: yes
+    become_method: sudo
+
+    # variables
+    vars_files:
+      - vars/dbServer_vars.yml
+
+    roles:
+      - pre_installations
+      - time_zone
+      - percona
+      - "{{ deployment_role }}"
+      - automysqlbackup
+      - htop
+      - nfs_kernel_server
+      - host_facts

@@ -1,0 +1,4 @@
+--- # file: roles/tomcat8/handlers/main.yml
+  - name: restart tomcat8
+    service: name=tomcat8 state=restarted
+    become: yes

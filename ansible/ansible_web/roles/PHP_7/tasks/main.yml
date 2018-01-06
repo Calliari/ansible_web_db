@@ -1,0 +1,32 @@
+--- # /roles/PHP_7/tasks/main.yml
+  - name: Install PHP-7
+    apt: name={{ item }} state=installed update_cache=yes
+    with_items:
+     # - php-mbstring
+     # - php-xml
+     - php7.0-mbstring
+     - php7.0-fpm
+     - php7.0-mysql
+     - php7.0-intl
+     - php7.0-xml
+     - php7.0-gd
+     - php7.0-memcached
+     - php7.0-curl
+    notify:
+      restart php7.0-fpm
+
+
+# This configurations taking place in conjuction with nginx (vhost files) "fastcgi_pass 127.0.0.1:9000;" in th php section
+  - name: comment sock connection line for php at "/etc/php/7.0/fpm/pool.d/www.conf"
+    replace:
+      path: /etc/php/7.0/fpm/pool.d/www.conf
+      regexp: '^listen = /run/php/php7.0-fpm.sock'
+      replace: ';listen = /run/php/php7.0-fpm.sock'
+
+  - name: php listen on "port 9000"
+    lineinfile:
+      path: /etc/php/7.0/fpm/pool.d/www.conf
+      insertafter: '^;listen = /run/php/php7.0-fpm.sock'
+      line: 'listen = 127.0.0.1:9000'
+    notify:
+      - restart php7.0-fpm

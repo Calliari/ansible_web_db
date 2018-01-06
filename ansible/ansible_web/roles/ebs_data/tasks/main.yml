@@ -1,0 +1,49 @@
+--- # roles/ebs_data/tasks/main.yml
+# ebs_data
+# sudo mkfs -t ext4 /dev/xvdf
+  - name: Create "/data/" directory
+    file:
+      path: /data
+      state: directory
+      mode: 0755
+    register: create_data_directory
+    become_method: sudo
+
+# works with 1 GB volume but not with 50 GB
+  # - name: format new volume "/dev/xvdf" - "this may take some time!"
+  #   filesystem:
+  #     fstype: ext4
+  #     dev: /dev/xvdf
+  #     # opts: '-cc'
+  #   become_method: sudo
+  #   become: true # as root
+  #   when: create_data_directory.changed
+
+  - name: format new volume "/dev/xvdf" - "this may take some time!"
+    shell: mkfs -t ext4 /dev/xvdf
+    become: true # as root
+    become_method: sudo
+    when: create_data_directory.changed
+
+
+  - name: Mount up device and connect the "/data" on "/etc/fstab"
+    mount:
+      path: /data
+      src: /dev/xvdf
+      fstype: ext4
+      state: mounted
+    become_method: sudo
+    become: true # as root
+    when: create_data_directory.changed
+
+  - name: Create "/data/drupal_files/" & "/data/drupal_privatefiles/"
+    file:
+      path: "{{ item }}"
+      state: directory
+      group: www-data
+      owner: www-data
+      mode: 0755
+    with_items:
+      - "/data/drupal_files/"
+      - "/data/drupal_privatefiles/"
+    become_method: sudo

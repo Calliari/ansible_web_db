@@ -1,0 +1,18 @@
+---
+# mysql root username and password
+# root username must be 'root'
+MySQL_root_username: root
+MySQL_root_pass: test
+
+deployment_role: add_mysql_user
+
+mysql_admin_username: admin_bob
+mysql_admin_pass: pass_bob
+mysql_admin_privilege: '*.*:ALL,GRANT'
+web_public_subnet: 172.28.1.%
+db_public_subnet: 172.28.2.%
+# display all available information about host when it is "true"
+show_facts: false
+
+# Add an private ip of a NFS-client-server to access the NFS directory onthe NFS-server
+# nfs_client_server: 172.31.8.209

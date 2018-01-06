@@ -1,0 +1,33 @@
+--- # roles/nginx_website/tasks/main.yml
+  - name: "Percona create a new database with name {{ MySQL_database_name }}"
+    mysql_db:
+      login_password: "{{ mysql_admin_pass }}"
+      login_user: "{{ mysql_admin_username }}"
+      login_host: "{{ db_private_ip }}"
+      name: "{{ MySQL_database_name }}"
+      state: present
+    register: create_db_website
+
+  - name: Install drupal8
+    shell: drush dl drupal-8
+    args:
+      chdir: /var/www/
+    become: yes
+    when: create_db_website.changed
+
+
+  - name: Rename drupal8 installation to website name "{{ website }}"
+    shell: |
+      FOLDERNAME=$(ls | grep drupal-8) && mv $FOLDERNAME "{{ website }}"
+    args:
+      chdir: /var/www/
+    become: yes
+    when: create_db_website.changed
+
+  - name: composer install "{{ website }}"
+    composer:
+      command: install
+      working_dir: "/var/www/{{ website }}"
+    become: yes
+    become_mode: sudo
+    when: create_db_website.changed

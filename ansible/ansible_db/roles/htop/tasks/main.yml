@@ -1,0 +1,6 @@
+--- # roles/htop/tasks/main.yml
+# htop
+  - name: Install htop
+    apt: name={{ item }} state=latest update_cache=yes
+    with_items:
+      - htop

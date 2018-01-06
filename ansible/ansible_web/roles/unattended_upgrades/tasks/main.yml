@@ -1,0 +1,17 @@
+---
+  # Unattended upgrades
+  # sudo dpkg-reconfigure unattended-upgrades
+  - name: Install unattended-upgrades
+    apt: name={{ item }} state=installed update_cache=yes
+    with_items:
+      - unattended-upgrades
+
+  - name: unattended-upgrades answers ( Yes ) ( Ok )
+    lineinfile:
+      dest: /etc/apt/apt.conf.d/20auto-upgrades
+      regexp: "^{{ item.regexp }}"
+      line: "{{ item.line }}"
+      backrefs: yes
+    with_items:
+      - { regexp: 'APT::Periodic::Update-Package-Lists "0";', line: 'APT::Periodic::Update-Package-Lists "1";' }
+      - { regexp: 'APT::Periodic::Unattended-Upgrade "0";', line: 'APT::Periodic::Unattended-Upgrade "1";' }

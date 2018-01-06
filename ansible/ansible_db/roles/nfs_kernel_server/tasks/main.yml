@@ -1,0 +1,44 @@
+--- # roles/nfs_kernel_server/tasks/main.yml
+# nfs_kernel_server
+
+  - name: Install nfs-kernel-server
+    apt: package={{ item }} state=installed update_cache=yes
+    when: ansible_os_family == 'Debian'
+    with_items:
+      - python-shade
+      - nfs-kernel-server
+    notify:
+      restart nfs_kernel_server
+
+  - name: Creating a directory to share (nfs) "/data"
+    file:
+      path: /data
+      state: directory
+      owner: nobody
+      group: nogroup
+      mode: 0755
+    register: create_network_file_system
+
+  - name: Format the volume to ext4 filesystem "/data"
+    shell: mkfs -t ext4 /dev/xvdf
+    become_method: sudo
+    when: create_network_file_system.changed
+    ignore_errors: yes
+
+  - name: Mount up device EBS Automount On Reboot "/data"
+    mount:
+      name: /data
+      src: /dev/xvdf
+      fstype: ext4
+      opts: nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0
+      state: present
+      # state: mounted
+    when: create_network_file_system.changed
+
+  # - name: Allowing client-server "/etc/exports" (nfs) access "/data"
+  #   lineinfile:
+  #     path: /etc/exports
+  #     state: present
+  #     line: "/data     {{ nfs_client_server }}(rw,sync,no_root_squash,no_subtree_check)"
+  #   notify:
+  #     restart nfs_kernel_server

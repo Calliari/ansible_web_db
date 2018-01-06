@@ -1,0 +1,23 @@
+--- # This is the main playbook in this project
+    # The variables are in the vars directory
+    # read the README.md file for more information about this playbook
+
+# WEB
+# deploy this on webServer
+  - hosts: webServer
+    remote_user: ubuntu
+    become: yes
+    become_method: sudo
+
+    # variables
+    # display all available information about host when it is "true"
+    vars:
+      show_facts: false
+
+    # variables
+    vars_files:
+      - vars/webSite_vars.yml
+
+    roles:
+      - drupal_website_role
+      - nginx_website

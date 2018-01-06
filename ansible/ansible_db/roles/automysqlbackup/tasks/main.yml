@@ -1,0 +1,42 @@
+--- # roles/automysqlbackup/tasks/main.yml
+  # automysqlbackup
+
+  - name: Creates directory /usr/local/share/automysqlbackup/ and /usr/sbin/bin/
+    file:
+      path: '{{ item.dir }}'
+      state: directory
+    with_items:
+      - { dir: '/usr/local/share/automysqlbackup/' }
+      - { dir: '/usr/sbin/bin/' }
+    become_method: sudo
+
+  - name: download automysqlbackup from source
+    unarchive:
+      src: https://downloads.sourceforge.net/project/automysqlbackup/AutoMySQLBackup/AutoMySQLBackup%20VER%203.0/automysqlbackup-v3.0_rc6.tar.gz?r=&ts=1510922863&use_mirror=kent
+      # src: https://sourceforge.net/projects/automysqlbackup/files/latest/download
+      dest: /usr/local/share/automysqlbackup/
+      remote_src: yes
+
+  - name: symlinks automysqlbackup
+    file:
+      src: /usr/local/share/automysqlbackup
+      dest: /usr/sbin/bin/automysqlbackup
+      state: link
+
+  - name: make this files executable automysqlbackup install.sh
+    file:
+      path: '{{ item }}'
+      owner: ubuntu
+      group: ubuntu
+      mode: "u+rwx,g-rx,o-x"
+    with_items:
+      - /usr/local/share/automysqlbackup/install.sh
+      - /usr/local/share/automysqlbackup/automysqlbackup
+
+  - name: Install automysqlbackup from the Install.sh file
+    command: /usr/local/share/automysqlbackup/install.sh
+    args:
+      chdir: /usr/local/share/automysqlbackup/
+    become_method: sudo
+    register: check_automysqlbackup_installation
+    changed_when: "not check_automysqlbackup_installation.stdout|search('automysqlbackup ... exists and is readable ... md5sum okay')"

@@ -1,0 +1,41 @@
+--- # This is the main playbook in this project
+    # The variables are in the vars directory
+    # read the README.md file for more information about this playbook
+
+# WEB
+# deploy this on webServer
+  - hosts: webServer
+    remote_user: ubuntu
+    become: yes
+    become_method: sudo
+
+    # variables
+    # display all available information about host when it is "true"
+    vars:
+      show_facts: false
+
+    # variables
+    vars_files:
+      - vars/webServer_vars.yml
+
+    roles:
+      - pre_installations
+      - time_zone
+      - MOTD
+      - cowsay
+      - ebs_data
+      - htop
+      - host_facts
+      - cowsay
+      - git
+      - curl
+      - PHP_7
+      - reconfigure_PHP
+      - unattended_upgrades
+      - mysql-client
+      - nginx
+      - varnish
+      - tomcat8
+      - memcached
+      - wp-cli
+      - composer_drush

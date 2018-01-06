@@ -1,0 +1,97 @@
+--- # roles/percona/tasks/main.yml
+# Install Percona
+  - name: Download Percona DB
+    get_url:
+      url: 'https://repo.percona.com/apt/percona-release_0.1-4.{{ ansible_lsb.codename }}_all.deb'
+      dest: /home/ubuntu/
+      mode: 0644
+    register: percona_download_check
+
+  - name: Set MySQL Percona root password before installing
+    debconf:
+      name: mysql-server
+      question: mysql-server/root_password
+      value: '{{ MySQL_root_pass | quote }}'
+      vtype: password
+    register: set_percona_root_password
+    changed_when: "set_percona_root_password.changed != true "
+
+  # OPTIONAL
+  # - name: Confirm MySQL Percona root password before installing
+  #   debconf:
+  #     name: mysql-server
+  #     question: mysql-server/root_password_again
+  #     value: '{{MySQL_root_pass | quote}}'
+  #     vtype: password
+  #   register: confirm_percona_root_password
+  #   changed_when: "confirm_percona_root_password.changed != true "
+
+  # - name: print register "confirm_percona_root_password"
+  #   debug:
+  #     msg: "{{ confirm_percona_root_password }}"
+
+  - name: install dpkg the Percona
+    apt:
+      deb: "/home/ubuntu/percona-release_0.1-4.{{ ansible_lsb.codename }}_all.deb"
+    # shell: cd /home/ubuntu/; sudo dpkg -i percona-release_0.1-4.{{ ansible_lsb.codename }}_all.deb ;
+
+  - name: Install Percona Server
+    apt: pkg={{ item }} state=present update_cache=yes
+    with_items:
+      - percona-server-server-5.7
+      - percona-server-client-5.7
+      - percona-server-common-5.7
+      - python-mysqldb
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+    notify:
+      - restart mysql
+
+  - name: Define the MySQL Percona root user credentials
+    mysql_user:
+      login_user: "{{ MySQL_root_username }}"
+      login_password: "{{ MySQL_root_pass }}"
+      name: "{{ MySQL_root_username }}"
+      password: "{{ MySQL_root_pass }}"
+      host: "{{ item }}"
+    with_items:
+      - 127.0.0.1
+      - localhost
+      # - ::1
+      # - "{{ ansible_fqdn }}"
+
+  - name: Deletes all anonymous MySQL server user for localhost
+    mysql_user:
+      login_password: "{{ MySQL_root_pass }}"
+      login_user: "{{ MySQL_root_username }}"
+      name: ""
+      host_all: yes
+      state: absent
+
+  - name: Print value of "ansible_fqd"
+    debug:
+      msg: "hostvars{{ ansible_fqdn }}"
+
+  # - name: Removes the MySQL test database
+  #   mysql_db: db=test state=absent login_password="{{ MySQL_root_pass }}" login_user="{{ MySQL_root_username }}"
+
+  - name: insert custom configuration for percona (mysql) "/etc/my.cnf"
+    blockinfile:
+      path: /etc/my.cnf
+      create: yes
+      state: present
+      marker: "# {mark} ANSIBLE MANAGED BLOCK"
+      content: |
+          [mysqld]
+          group_concat_max_len=10000
+          max_connections = 1000
+          innodb_file_per_table
+          innodb_flush_method=O_DIRECT
+          innodb_log_file_size=1G
+          innodb_buffer_pool_size=4G
+          # Attempt to improve performance for imports
+          innodb_thread_concurrency = 0
+          innodb_read_io_threads = 64
+          innodb_write_io_threads = 64
+          innodb_flush_log_at_trx_commit = 2
+          max_allowed_packet = 32M

@@ -1,0 +1,38 @@
+--- # roles/reconfigure_PHP/tasks/main.yml
+# Reconfigure PHP for better settings
+  - name: Reconfigure PHP for better settings ( server_tokens off;, memory_limit = 512M, post_max_size = 32M )
+    lineinfile:
+      dest: /etc/php/7.0/cli/php.ini
+      regexp: "^{{ item.regexp }}"
+      line: "{{ item.line }}"
+    with_items:
+      - { regexp: 'expose_php = *', line: 'expose_php = Off' }
+      - { regexp: 'memory_limit = *', line: 'memory_limit = 512M' }
+      - { regexp: 'post_max_size = *', line: 'post_max_size = 32M' }
+
+
+  - name: Reconfigure PHP for better settings
+    blockinfile:
+      path: /etc/php/7.0/cli/php.ini
+      marker: ";# {mark} ANSIBLE MANAGED BLOCK"
+      insertafter: ";date.timezone ="
+      content: |
+                date.timezone = "Europe/London"
+                ; Lat/Long for SE corner of Parliament Square (near Big Ben)
+                date.default_latitude = 51.500181
+                date.default_longitude = -0.12619
+  - name: Reconfigure PHP for better settings ( max_file_size = 32M )
+    lineinfile:
+      path: /etc/php/7.0/cli/php.ini
+      state: present
+      insertafter: "^;opcache.max_file_size=0"
+      line: 'max_file_size = 32M'
+
+  # configuration fort php file
+  # osvaldocaliari@bigblaa4:/etc/php/5.6/apache2/conf.d$ cat 99-bbd-settings.ini
+
+  - name: custom configuratiuon for "PHP-7 ini"
+    template:
+      src: templates/99-settings.ini.j2
+      dest: "/etc/php/7.0/fpm/conf.d/99-settings.ini"
+      force: yes

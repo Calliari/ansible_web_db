@@ -1,0 +1,25 @@
+--- # roles/tomcat8/tasks/main.yml
+# tomcat8
+  - name: Install tomcat8
+    apt: name={{ item }} state=latest update_cache=yes
+    with_items:
+      - tomcat8
+    register: tomcat8_installed
+
+  - name: insert env for tomcat8 "/usr/share/tomcat8/bin/setenv.sh"
+    blockinfile:
+      path: /usr/share/tomcat8/bin/setenv.sh
+      mode: 0755
+      create: yes
+      marker: "# {mark} ANSIBLE MANAGED BLOCK "
+      content: |
+        #
+        export CATALINA_OPTS="$CATALINA_OPTS -Xms512m"
+        export CATALINA_OPTS="$CATALINA_OPTS -Xmx2048m"
+        export CATALINA_OPTS="$CATALINA_OPTS -XX:MaxPermSize=256m"
+  - name: restart tomcat8 force
+    shell:  cd /usr/share/tomcat8/bin/; sudo service tomcat8 restart
+    become: yes
+    when: tomcat8_installed.changed
+    notify:
+      - restart tomcat8

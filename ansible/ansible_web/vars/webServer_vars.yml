@@ -1,0 +1,8 @@
+---
+
+
+server_name: test-server
+
+
+# display all available information about host when it is true
+show_facts: false

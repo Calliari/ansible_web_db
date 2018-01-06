@@ -1,0 +1,6 @@
+--- # file: roles/mysql-client/handlers/main.yml
+# restart ysql-client after Installation
+  - name: restart mysql-client
+    service: name=mysql state=restarted
+    become: yes
+    become_method: sudo

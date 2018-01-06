@@ -1,0 +1,5 @@
+---  # Add UK timezone (auto-adjusts for BST)
+# file: roles/nginx/handlers/main.yml
+  - name: set timezone to Europe/Dublin
+    timezone:
+      name: Europe/Dublin

@@ -1,0 +1,56 @@
+--- # roles/composer/tasks/main.yml
+# Composer
+  # - name: check if composer is already on the remote server
+  #   stat: path="/usr/local/bin/composer"
+  #   register: composer_check
+  #
+  - name: install Composer
+    shell: cd /home/ubuntu/; curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+    register: composer_install
+    changed_when: "not composer_install.stdout|search('successfully installed to: /usr/local/bin/composer')"
+        # changed_when: false
+
+
+  # - name: check if composer is already on the remote server
+  #   debug:
+  #     msg: "{{ composer_install }}"
+
+  - name: Make sure composer its at its latest version
+    composer:
+      working_dir: /usr/local/bin/
+      command: self-update
+    register: composer_self_update
+    changed_when: "not composer_self_update.stdout|search('You are already using composer version')"
+
+# Install drush latest version (needed for D8)
+  - name: check if drush is already on the remote server
+    stat: path="/usr/local/bin/drush"
+    register: drush_check
+
+  - name: Clone drush repo
+    git:
+      repo: https://github.com/drush-ops/drush.git
+      dest: /usr/share/drush8
+      version: 8.x
+      update: no
+
+  - name: Install composer from drush
+    become: true
+    composer:
+      command: install
+      working_dir: /usr/share/drush8/
+    changed_when: false
+
+  - name: symlinks ( /usr/share/drush8/drush /usr/local/bin/drush )
+    file:
+      src: /usr/share/drush8/drush
+      dest: /usr/local/bin/drush
+      owner: root
+      group: root
+      state: link
+
+  - name: Add composer to global path
+    lineinfile:
+      path: ~/.profile
+      state: present
+      line: 'PATH="$HOME/bin:$HOME/.local/bin:$PATH"'

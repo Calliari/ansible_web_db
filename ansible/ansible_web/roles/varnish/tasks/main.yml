@@ -1,0 +1,475 @@
+--- # roles/varnish/tasks/main.yml
+# varnish
+  - name: Install varnish
+    apt: name={{ item }} state=latest update_cache=yes
+    with_items:
+      - varnish
+    notify:
+      - restart varnish
+
+
+# This is for ubuntu 16.04
+  - name: Varnish configurations "/lib/systemd/system/varnish.service" (port --> 8000)
+    lineinfile:
+      path: /lib/systemd/system/varnish.service
+      insertafter: '^ExecStart=/usr/sbin/varnishd -j unix,user=vcache -F -a :6081 -T localhost:6082 -f /etc/varnish/default.vcl -S /etc/varnish/secret -s malloc,256m'
+      line: 'ExecStart=/usr/sbin/varnishd -j unix,user=vcache -F -a :8000 -T localhost:6082 -f /etc/varnish/default.vcl -S /etc/varnish/secret -s malloc,4G'
+      state: present
+    notify:
+      - restart varnish
+      - reload varnish
+    register: varnish_resgister
+
+  - name: Varnish configurations "/lib/systemd/system/varnish.service" (comment original conf)
+    replace:
+      path: /lib/systemd/system/varnish.service
+      regexp: '^ExecStart=/usr/sbin/varnishd -j unix,user=vcache -F -a :6081 -T localhost:6082 -f /etc/varnish/default.vcl -S /etc/varnish/secret -s malloc,256m'
+      replace: '#ExecStart=/usr/sbin/varnishd -j unix,user=vcache -F -a :6081 -T localhost:6082 -f /etc/varnish/default.vcl -S /etc/varnish/secret -s malloc,256m'
+    notify:
+      - restart varnish
+      - reload varnish
+
+  - name: force reload "sudo systemctl daemon-reload"
+    command: systemctl daemon-reload
+    become_method: sudo
+    when: varnish_resgister.changed
+
+
+
+
+#
+# # This is for ubuntu 14.04 copied from bigblaa4
+#   - name: Varnish configurations "/etc/default/varnish"
+#     lineinfile:
+#       path: /etc/default/varnish
+#       regexp: "^{{ item.regexp }}"
+#       line: "{{ item.line }}"
+#     with_items:
+#       - { regexp: 'DAEMON_OPTS="-a * ', line: 'DAEMON_OPTS="-a :81 \ ' }
+#       - { regexp: '             -s * ', line: '             -s malloc,4G"' }
+#
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" (port --> 8000)
+#     lineinfile:
+#       path: /etc/varnish/default.vcl
+#       regexp: "^{{ item.regexp }}"
+#       line: "{{ item.line }}"
+#     with_items:
+#       - { regexp: '    .port = *', line: '    .port = "8000";' }
+#
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" (import std)
+#     lineinfile:
+#       path: /etc/varnish/default.vcl
+#       insertbefore: '^backend default {'
+#       line: 'import std; '
+#       state: present
+#
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" ( CONNECTIONS )
+#     lineinfile:
+#       path: /etc/varnish/default.vcl
+#       insertafter: '^    .port = "8000";'
+#       line: "{{ item.line }}"
+#     with_items:
+#       - { line: '    .between_bytes_timeout = 1800s;' }
+#       - { line: '    .first_byte_timeout = 1800s;' }
+#       - { line: '    .connect_timeout = 1800s;' }
+#       - { line: '    .max_connections = 250;' }
+#
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" ( sub vcl_recv )
+#     blockinfile:
+#       path: /etc/varnish/default.vcl
+#       marker: '# {mark} Respond to incoming requests.'
+#       insertafter: '^sub vcl_recv {'
+#       content: |
+#
+#         # BBD using Varnish.
+#
+#           if (req.url == "/monit-check-url-FktuCQYyewUr") {
+#             error 200 "Varnish up";
+#           }
+#
+#           if (req.http.X-Forwarded-For ~ "^162.13.88.111") {
+#           #  return (pass);
+#           }
+#           if ((!req.http.X-Real-IP) && (req.http.X-Forwarded-For != "")) {
+#             set req.http.X-Real-IP = req.http.X-Forwarded-For;
+#           }
+#           if (client.ip == "127.0.0.1") {
+#           #  return (pass);
+#           }
+#             # if (client.ip == "5.153.253.234") {
+#             ##  return (pass);
+#             #}
+#
+#           # Use anonymous, cached pages if all backends are down.
+#           if (!req.backend.healthy) {
+#             unset req.http.Cookie;
+#           }
+#
+#           # Allow the backend to serve up stale content if it is responding slowly.
+#           set req.grace = 6h;
+#
+#           # Pipe these paths directly to Apache for streaming.
+#           #if (req.url ~ "^/admin/content/backup_migrate/export") {
+#           #  return (pipe);
+#           #}
+#           if (req.url ~ "^/system/files/") {
+#             return (pipe);
+#           }
+#
+#           if (req.restarts == 0) {
+#             if (req.http.x-forwarded-for) {
+#               # set req.http.X-Forwarded-For = req.http.X-Forwarded-For + ", " + client.ip;
+#               std.log("RealIP:" + req.http.X-Forwarded-For);
+#             }
+#             else {
+#               # set req.http.X-Forwarded-For = client.ip;
+#               std.log("RealIP:" + client.ip);
+#             }
+#           }
+#
+#           # Do not cache these paths.
+#           if (req.url ~ "^/status\.php$" ||
+#               req.url ~ "^/update\.php$" ||
+#               req.url ~ "^/admin$" ||
+#               req.url ~ "^/admin/.*$" ||
+#               req.url ~ "^/flag/.*$" ||
+#               req.url ~ "^.*/ajax/.*$" ||
+#               req.url ~ "^.*/ahah/.*$") {
+#                return (pass);
+#           }
+#
+#           # Do not allow outside access to cron.php or install.php.
+#           #if (req.url ~ "^/(cron|install)\.php$" && !client.ip ~ internal) {
+#             # Have Varnish throw the error directly.
+#           #  error 404 "Page not found.";
+#             # Use a custom error page that you've defined in Drupal at the path "404".
+#             # set req.url = "/404";
+#           #}
+#
+#           # Always cache the following file types for all users. This list of extensions
+#           # appears twice, once here and again in vcl_fetch so make sure you edit both
+#           # and keep them equal.
+#           if (req.url ~ "(?i)\.(pdf|asc|dat|txt|doc|docx|xls|xlsx|ppt|pptx|tgz|csv|png|gif|jpeg|jpg|ico|swf|css|js|woff|ttf|svg)(\?.*)?$") {
+#             # If the file ending is in the above list, and we're looking at the user/login
+#             # page, this could be a legitimate request for a private file. Allow Drupal to
+#             # manage this eventuality.
+#             if (req.url ~ "^/user/login") {
+#               return (pipe);
+#             }
+#             else if (req.url ~ "^/bakery/login") {
+#               return (pipe);
+#             }
+#             else {
+#               unset req.http.Cookie;
+#             }
+#           }
+#
+#           # Remove all cookies that Drupal doesn't need to know about. We explicitly
+#           # list the ones that Drupal does need, the SESS and NO_CACHE. If, after
+#           # running this code we find that either of these two cookies remains, we
+#           # will pass as the page cannot be cached.
+#           if (req.http.Cookie) {
+#             # 1. Append a semi-colon to the front of the cookie string.
+#             # 2. Remove all spaces that appear after semi-colons.
+#             # 3. Match the cookies we want to keep, adding the space we removed
+#             #    previously back. (\1) is first matching group in the regsuball.
+#             # 4. Remove all other cookies, identifying them by the fact that they have
+#             #    no space after the preceding semi-colon.
+#             # 5. Remove all spaces and semi-colons from the beginning and end of the
+#             #    cookie string.
+#             set req.http.Cookie = ";" + req.http.Cookie;
+#             set req.http.Cookie = regsuball(req.http.Cookie, "; +", ";");
+#             if (req.http.host ~ "^thehub-demo.bbdtest.co.uk" || req.http.host ~ "^thehubcommunity-demo.bbdtest.co.uk") {
+#                 # Manage Bakery. This is a pain.
+#                 # Strip all cookies except for the following (easy bit)
+#                 set req.http.Cookie = regsuball(req.http.Cookie, ";(SESS[a-z0-9]+|SSESS[a-z0-9]+|aucp13n|nocache|NO_CACHE|PERSISTENT_LOGIN_[a-zA-Z0-9]+|CHOCOLATECHIP(SSL)?|OATMEAL(SSL)?|session_api_session|aucdbg)=", "; \1=");
+#
+#                 # If there is no session, and no chocolate chip, we shouldn't have
+#                 # OATMEAL. However, this isn't unset because new sites in the Bakery
+#                 # collection might(?) need to read this to recognise a session.
+#                 # @todo: post an issue in d.o queue. I (PK) am pretty sure this
+#                 # exception should not be needed.
+#
+#                 # Long if: if there is no SESS (or secure), and no CHOCCHIP (or
+#                 # secure) BUT there IS an OATMEAL:
+#                 if (req.http.Cookie !~ "SESS" && req.http.Cookie !~ "SSESS" && req.http.Cookie !~ "CHOCOLATECHIP" && req.http.Cookie !~ "CHOCOLATECHIPSSL" && req.http.Cookie ~ "OATMEAL") {
+#                     set req.http.cookie = regsub(req.http.cookie, "(; )?OATMEAL=[^;]+", "");
+#                     set req.http.cookie = regsub(req.http.cookie, "(; )?OATMEALSSL=[^;]+", "");
+#                 }
+#             }
+#             else {
+#                 # If not on Waltham, we need to strip the CHOCCHIP and OATMEAL
+#                 # cookies as well (they're not in the exceptions list). Without
+#                 # this exception, all requests to .bbdtest.co.uk sites would
+#                 # be uncached if there is a valid login to Waltham.
+#                 set req.http.Cookie = regsuball(req.http.Cookie, ";(SESS[a-z0-9]+|SSESS[a-z0-9]+|aucp13n|nocache|NO_CACHE|PERSISTENT_LOGIN_[a-zA-Z0-9]+|session_api_session|laravel_session)=", "; \1=");
+#             }
+#             set req.http.Cookie = regsuball(req.http.Cookie, ";[^ ][^;]*", "");
+#             set req.http.Cookie = regsuball(req.http.Cookie, "^[; ]+|[; ]+$", "");
+#
+#             if (req.http.Cookie == "") {
+#               # If there are no remaining cookies, remove the cookie header. If there
+#               # aren't any cookie headers, Varnish's default behavior will be to cache
+#               # the page.
+#               unset req.http.Cookie;
+#             }
+#             else {
+#               # If there is any cookies left (a session or NO_CACHE cookie), do not
+#               # cache the page. Pass it on to Apache directly.
+#               return (pass);
+#             }
+#           }
+#
+#           # Handle compression correctly. Different browsers send different
+#           # "Accept-Encoding" headers, even though they mostly all support the same
+#           # compression mechanisms. By consolidating these compression headers into
+#           # a consistent format, we can reduce the size of the cache and get more hits.
+#           # @see: http:// varnish.projects.linpro.no/wiki/FAQ/Compression
+#           if (req.http.Accept-Encoding) {
+#             if (req.http.Accept-Encoding ~ "gzip") {
+#               # If the browser supports it, we'll use gzip.
+#               set req.http.Accept-Encoding = "gzip";
+#             }
+#             else if (req.http.Accept-Encoding ~ "deflate") {
+#               # Next, try deflate if it is supported.
+#               set req.http.Accept-Encoding = "deflate";
+#             }
+#             else {
+#               # Unknown algorithm. Remove it and send unencoded.
+#               unset req.http.Accept-Encoding;
+#             }
+#           }
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" ( sub vcl_deliver )
+#     blockinfile:
+#       path: /etc/varnish/default.vcl
+#       marker: '# {mark} Set a header to track a cache HIT/MISS.'
+#       insertafter: '^sub vcl_deliver {'
+#       content: |
+#
+#         # BBD VPN: we can debug, others shouldn't know we're using Varnish.
+#           if (req.http.X-Forwarded-For ~ "^162.13.88.111" || req.http.X-Forwarded-For ~ "^62.255.128.10") {
+#             if (obj.hits > 0) {
+#               set resp.http.X-debug-Varnish-Cache = "HIT";
+#             }
+#             else {
+#               set resp.http.X-debug-Varnish-Cache = "MISS";
+#             }
+#             if (req.http.Authorization) {
+#               set resp.http.X-debug-Authorization = req.http.Authorization;
+#             }
+#             if (req.http.Cookie) {
+#               set resp.http.X-debug-Cookie = req.http.Cookie;
+#             }
+#           }
+#           else {
+#             # Not on BBD VPN
+#             # Extra security - remove any Varnish headers
+#             remove resp.http.Via;
+#             remove resp.http.X-Powered-By;
+#             remove resp.http.X-Varnish;
+#             remove resp.http.Age;
+#             remove resp.http.Server;
+#             # remove the obvious drupal tags
+#             remove resp.http.X-Generator;
+#             remove resp.http.X-Drupal-Cache;
+#           }
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" ( Back-end response )
+#     blockinfile:
+#       path: /etc/varnish/default.vcl
+#       marker: '# {mark} Back-end response from the web server.'
+#       content: |
+#
+#         # Code determining what to do when serving items from the Apache servers.
+#         # beresp == Back-end response from the web server.
+#         sub vcl_fetch {
+#           # We need this to cache 404s, 301s, 500s. Otherwise, depending on backend but
+#           # definitely in Drupal's case these responses are not cacheable by default.
+#           if (beresp.status == 404 || beresp.status == 301 || beresp.status == 500) {
+#             set beresp.ttl = 10m;
+#           }
+#
+#           # Don't allow static files to set cookies.
+#           # (?i) denotes case insensitive in PCRE (perl compatible regular expressions).
+#           # This list of extensions appears twice, once here and again in vcl_recv so
+#           # make sure you edit both and keep them equal.
+#           if (req.url ~ "(?i)\.(pdf|asc|dat|txt|doc|docx|xls|xlsx|ppt|pptx|tgz|csv|png|gif|jpeg|jpg|ico|swf|css|js)(\?.*)?$") {
+#             unset beresp.http.set-cookie;
+#             set beresp.http.Cache-Control = "public, max-age=86400";
+#             set beresp.ttl = 1d;
+#           }
+#
+#           # Allow items to be stale if needed.
+#           set beresp.grace = 6h;
+#         }
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" ( error from varnish )
+#     blockinfile:
+#       path: /etc/varnish/default.vcl
+#       marker: '# {mark} error from varnish.'
+#       content: |
+#
+#         # In the event of an error, show friendlier messages.
+#         sub vcl_error {
+#           # Redirect to some other URL in the case of a homepage failure.
+#           #if (req.url ~ "^/?$") {
+#           #  set obj.status = 302;
+#           #  set obj.http.Location = "http://backup.example.com/";
+#           #}
+#
+#           # Otherwise redirect to the homepage, which will likely be in the cache.
+#           set obj.http.Content-Type = "text/html; charset=utf-8";
+#           synthetic {"
+#         <html>
+#         <head>
+#           <title>Page Unavailable</title>
+#           <style>
+#             body { background: #303030; text-align: center; color: white; }
+#             #page { border: 1px solid #CCC; width: 500px; margin: 100px auto 0; padding: 30px; background: #323232; }
+#             a, a:link, a:visited { color: #CCC; }
+#             .error { color: #222; }
+#           </style>
+#         </head>
+#         <body onload="setTimeout(function() { window.location = '/' }, 5000)">
+#           <div id="page">
+#             <h1 class="title">Page Unavailable</h1>
+#             <p>The page you requested is temporarily unavailable.</p>
+#             <p>We're redirecting you to the <a href="/">homepage</a> in 5 seconds.</p>
+#             <div class="error">(Error "} + obj.status + " " + obj.response + {")</div>
+#           </div>
+#         </body>
+#         </html>
+#         "};
+#           return (deliver);
+#         }
+#
+#   - name: Varnish configurations "/etc/varnish/default.vcl" ( commented-out varnish code )
+#     blockinfile:
+#       path: /etc/varnish/default.vcl
+#       marker: '# {mark} Below is a commented-out copy of the default VCL logic'
+#       content: |
+#
+#         #
+#         # Below is a commented-out copy of the default VCL logic.  If you
+#         # redefine any of these subroutines, the built-in logic will be
+#         # appended to your code.
+#         # sub vcl_recv {
+#         #     if (req.restarts == 0) {
+#         #     if (req.http.x-forwarded-for) {
+#         #         set req.http.X-Forwarded-For =
+#         #         req.http.X-Forwarded-For + ", " + client.ip;
+#         #     } else {
+#         #         set req.http.X-Forwarded-For = client.ip;
+#         #     }
+#         #     }
+#         #     if (req.request != "GET" &&
+#         #       req.request != "HEAD" &&
+#         #       req.request != "PUT" &&
+#         #       req.request != "POST" &&
+#         #       req.request != "TRACE" &&
+#         #       req.request != "OPTIONS" &&
+#         #       req.request != "DELETE") {
+#         #         /* Non-RFC2616 or CONNECT which is weird. */
+#         #         return (pipe);
+#         #     }
+#         #     if (req.request != "GET" && req.request != "HEAD") {
+#         #         /* We only deal with GET and HEAD by default */
+#         #         return (pass);
+#         #     }
+#         #     if (req.http.Authorization || req.http.Cookie) {
+#         #         /* Not cacheable by default */
+#         #         return (pass);
+#         #     }
+#         #     return (lookup);
+#         # }
+#         #
+#         # sub vcl_pipe {
+#         #     # Note that only the first request to the backend will have
+#         #     # X-Forwarded-For set.  If you use X-Forwarded-For and want to
+#         #     # have it set for all requests, make sure to have:
+#         #     # set bereq.http.connection = "close";
+#         #     # here.  It is not set by default as it might break some broken web
+#         #     # applications, like IIS with NTLM authentication.
+#         #     return (pipe);
+#         # }
+#         #
+#         # sub vcl_pass {
+#         #     return (pass);
+#         # }
+#         #
+#         #
+#         # sub vcl_pass {
+#         #     return (pass);
+#         # }
+#         #
+#         # sub vcl_hash {
+#         #     hash_data(req.url);
+#         #     if (req.http.host) {
+#         #         hash_data(req.http.host);
+#         #     } else {
+#         #         hash_data(server.ip);
+#         #     }
+#         #     return (hash);
+#         # }
+#         #
+#         # sub vcl_hit {
+#         #     return (deliver);
+#         # }
+#         #
+#         # sub vcl_miss {
+#         #     return (fetch);
+#         # }
+#         #
+#         # sub vcl_fetch {
+#         #     if (beresp.ttl <= 0s ||
+#         #         beresp.http.Set-Cookie ||
+#         #         beresp.http.Vary == "*") {
+#         #         /*
+#         #          * Mark as "Hit-For-Pass" for the next 2 minutes
+#         #          */
+#         #         set beresp.ttl = 120 s;
+#         #         return (hit_for_pass);
+#         #     }
+#         #     return (deliver);
+#         # }
+#         #
+#         # sub vcl_deliver {
+#         #     return (deliver);
+#         # }
+#         #
+#         # sub vcl_error {
+#         #     set obj.http.Content-Type = "text/html; charset=utf-8";
+#         #     set obj.http.Retry-After = "5";
+#         #     synthetic {"
+#         # <?xml version="1.0" encoding="utf-8"?>
+#         # <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+#         #  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+#         # <html>
+#         #   <head>
+#         #     <title>"} + obj.status + " " + obj.response + {"</title>
+#         #   </head>
+#         #   <body>
+#         #     <h1>Error "} + obj.status + " " + obj.response + {"</h1>
+#         #     <p>"} + obj.response + {"</p>
+#         #     <h3>Guru Meditation:</h3>
+#         #     <p>XID: "} + req.xid + {"</p>
+#         #     <hr>
+#         #     <p>Varnish cache server</p>
+#         #   </body>
+#         # </html>
+#         # "};
+#         #     return (deliver);
+#         # }
+#         #
+#         # sub vcl_init {
+#         #     return (ok);
+#         # }
+#         #
+#         # sub vcl_fini {
+#         #     return (ok);
+#         # }

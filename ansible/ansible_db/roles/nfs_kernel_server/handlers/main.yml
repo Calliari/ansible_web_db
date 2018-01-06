@@ -1,0 +1,6 @@
+--- # file: roles/nfs_kernel_server/handlers/main.yml
+# restart nfs-kernel-server after Installation
+  - name: restart nfs_kernel_server
+    service: name=nfs-kernel-server state=restarted
+    become: yes
+    become_method: sudo

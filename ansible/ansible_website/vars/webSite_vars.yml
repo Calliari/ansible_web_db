@@ -1,0 +1,10 @@
+---
+
+
+mysql_admin_username: admin_bob
+mysql_admin_pass: pass_bob
+db_private_ip: 172.28.2.159
+MySQL_database_name: test_database
+
+
+website: test.com

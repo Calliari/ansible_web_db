@@ -1,0 +1,25 @@
+--- # roles/MOTD/tasks/main.yml
+# message of the day (using MOTD)
+  - name:  MOTD, cowsay a message to (/etc/update-motd.d/99-bbdfooter)
+    blockinfile:
+      path: /etc/update-motd.d/custom-footer
+      # marker: "#!/bin/sh {mark}"
+      block: |
+        ##!/bin/sh
+        # Provides MOTD to remind that CONTROL is needed for deployments.
+        #
+        # @author PK
+        HOSTNAME=`hostname`
+        CURRENT_SYSINFO=$(/usr/bin/landscape-sysinfo)
+        /bin/echo -e "\nWelcome to the {{ server_name }} Live Server! [$HOSTNAME]\n\nIf you need to deploy a site, you need to switch user to USER-control:\n\`sudo su USER-control\`\n\nSpeak to SYSOPS ADMIN if any issues.\n\nCurrent information:\n$CURRENT_SYSINFO\n" | /usr/games/cowsay -n
+      marker: '# {mark} ANSIBLE MANAGED BLOCK'
+      create: yes
+      mode: "u+rwx,g+rx,o+rx"
+
+
+  - name: Ansible lineinfile regexp add "#!/bin/sh" as first line
+    lineinfile:
+     path: /etc/update-motd.d/custom-footer
+     state: present
+     insertbefore: '^# BEGIN ANSIBLE MANAGED BLOCK'
+     line: '#!/bin/sh'

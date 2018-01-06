@@ -1,0 +1,13 @@
+--- # roles/memcached/tasks/main.yml
+# memcached
+  - name: Install memcached
+    apt: name={{ item }} state=installed update_cache=yes
+    with_items:
+     - memcached
+
+  - name: memcached configuration (-m 512)
+    lineinfile:
+      path: /etc/memcached.conf
+      regexp: '^-m 64'
+      line: '-m 512'
+      backrefs: yes

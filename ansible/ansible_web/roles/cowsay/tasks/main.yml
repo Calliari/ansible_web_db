@@ -1,0 +1,6 @@
+--- # roles/cowsay/tasks/main.yml
+# cowsay
+  - name: Install cowsay
+    apt: name={{ item }} state=latest update_cache=yes
+    with_items:
+      - cowsay

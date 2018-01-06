@@ -1,0 +1,18 @@
+--- # roles/add_mysql_user/tasks/main.yml
+# add_mysql_user
+  - name: Create MySQL Percona user
+    mysql_user:
+      login_user: "{{ MySQL_root_username }}"
+      login_password: "{{ MySQL_root_pass }}"
+      user:  "{{ mysql_admin_username }}"
+      password: "{{ mysql_admin_pass }}"
+      priv: "{{ mysql_admin_privilege }}"
+      state: present
+      host: "{{ item }}"
+    with_items:
+      - 127.0.0.1
+      - localhost
+      - "{{ web_public_subnet }}"
+      - "{{ db_public_subnet }}"
+    notify:
+      restart mysql
