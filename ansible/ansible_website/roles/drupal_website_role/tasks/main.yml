@@ -8,26 +8,49 @@
       state: present
     register: create_db_website
 
+  - name: create the directory for "{{ website }}"
+    file:
+      path: "/var/www/{{ website }}"
+      state: directory
+      mode: 0755
+
   - name: Install drupal8
     shell: drush dl drupal-8
     args:
-      chdir: /var/www/
+      chdir: "/var/www/{{ website }}"
     become: yes
     when: create_db_website.changed
 
-
-  - name: Rename drupal8 installation to website name "{{ website }}"
+  - name: Rename drupal8 installation to website name "/var/www/{{ website }}"/public_html
     shell: |
-      FOLDERNAME=$(ls | grep drupal-8) && mv $FOLDERNAME "{{ website }}"
+      FOLDERNAME=$(ls | grep drupal-8) && mv $FOLDERNAME public_html
     args:
-      chdir: /var/www/
+      chdir: "/var/www/{{ website }}"
     become: yes
     when: create_db_website.changed
 
   - name: composer install "{{ website }}"
     composer:
       command: install
-      working_dir: "/var/www/{{ website }}"
+      working_dir: "/var/www/{{ website }}/public_html"
     become: yes
     become_mode: sudo
     when: create_db_website.changed
+
+  - name: create synclink for "files" and "drupal_file" directory
+    file:
+     src: "/data/drupal_files/{{ website }}"
+     dest: "/var/www/{{ website }}/public_html/sites/default/files"
+     force: yes
+     owner: www-data
+     group: www-data
+     state: link
+     mode: 0755
+
+  - name: create the directory for "/data/drupal_files/{{ website }}"
+    file:
+      path: "/data/drupal_files/{{ website }}"
+      state: directory
+      owner: www-data
+      group: www-data
+      mode: 0755
